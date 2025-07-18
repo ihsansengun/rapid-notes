@@ -6,7 +6,20 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		57DF1F132E2A66DC00621B93 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 57DF1ECF2E2A38C400621B93 /* WidgetKit.framework */; };
+		57DF1F142E2A66DC00621B93 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 57DF1ED12E2A38C400621B93 /* SwiftUI.framework */; };
+		57DF1F232E2A66DD00621B93 /* QuickDumpWidgetExtensionExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 57DF1F122E2A66DC00621B93 /* QuickDumpWidgetExtensionExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
+		57DF1F212E2A66DD00621B93 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 57F6FAF02E2910BA00CF620A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 57DF1F112E2A66DC00621B93;
+			remoteInfo = QuickDumpWidgetExtensionExtension;
+		};
 		57F6FB072E2910BB00CF620A /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 57F6FAF02E2910BA00CF620A /* Project object */;
@@ -23,13 +36,36 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		57DF1EE62E2A38C500621B93 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				57DF1F232E2A66DD00621B93 /* QuickDumpWidgetExtensionExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		57DF1ECF2E2A38C400621B93 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		57DF1ED12E2A38C400621B93 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		57DF1F122E2A66DC00621B93 /* QuickDumpWidgetExtensionExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = QuickDumpWidgetExtensionExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		57E4CB282E2A6AC1003305B3 /* QuickDumpWidgetExtensionExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = QuickDumpWidgetExtensionExtension.entitlements; sourceTree = "<group>"; };
 		57F6FAF82E2910BA00CF620A /* Rapid Notes.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Rapid Notes.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		57F6FB062E2910BB00CF620A /* Rapid NotesTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Rapid NotesTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		57F6FB102E2910BB00CF620A /* Rapid NotesUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Rapid NotesUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		57DF1F152E2A66DC00621B93 /* QuickDumpWidgetExtension */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = QuickDumpWidgetExtension;
+			sourceTree = "<group>";
+		};
 		57F6FAFA2E2910BA00CF620A /* Rapid Notes */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = "Rapid Notes";
@@ -48,6 +84,15 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		57DF1F0F2E2A66DC00621B93 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				57DF1F142E2A66DC00621B93 /* SwiftUI.framework in Frameworks */,
+				57DF1F132E2A66DC00621B93 /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		57F6FAF52E2910BA00CF620A /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -72,12 +117,24 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		57DF1ECE2E2A38C400621B93 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				57DF1ECF2E2A38C400621B93 /* WidgetKit.framework */,
+				57DF1ED12E2A38C400621B93 /* SwiftUI.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		57F6FAEF2E2910BA00CF620A = {
 			isa = PBXGroup;
 			children = (
+				57E4CB282E2A6AC1003305B3 /* QuickDumpWidgetExtensionExtension.entitlements */,
 				57F6FAFA2E2910BA00CF620A /* Rapid Notes */,
 				57F6FB092E2910BB00CF620A /* Rapid NotesTests */,
 				57F6FB132E2910BB00CF620A /* Rapid NotesUITests */,
+				57DF1F152E2A66DC00621B93 /* QuickDumpWidgetExtension */,
+				57DF1ECE2E2A38C400621B93 /* Frameworks */,
 				57F6FAF92E2910BA00CF620A /* Products */,
 			);
 			sourceTree = "<group>";
@@ -88,6 +145,7 @@
 				57F6FAF82E2910BA00CF620A /* Rapid Notes.app */,
 				57F6FB062E2910BB00CF620A /* Rapid NotesTests.xctest */,
 				57F6FB102E2910BB00CF620A /* Rapid NotesUITests.xctest */,
+				57DF1F122E2A66DC00621B93 /* QuickDumpWidgetExtensionExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -95,6 +153,28 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		57DF1F112E2A66DC00621B93 /* QuickDumpWidgetExtensionExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 57DF1F252E2A66DD00621B93 /* Build configuration list for PBXNativeTarget "QuickDumpWidgetExtensionExtension" */;
+			buildPhases = (
+				57DF1F0E2E2A66DC00621B93 /* Sources */,
+				57DF1F0F2E2A66DC00621B93 /* Frameworks */,
+				57DF1F102E2A66DC00621B93 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				57DF1F152E2A66DC00621B93 /* QuickDumpWidgetExtension */,
+			);
+			name = QuickDumpWidgetExtensionExtension;
+			packageProductDependencies = (
+			);
+			productName = QuickDumpWidgetExtensionExtension;
+			productReference = 57DF1F122E2A66DC00621B93 /* QuickDumpWidgetExtensionExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		57F6FAF72E2910BA00CF620A /* Rapid Notes */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 57F6FB1A2E2910BB00CF620A /* Build configuration list for PBXNativeTarget "Rapid Notes" */;
@@ -102,10 +182,12 @@
 				57F6FAF42E2910BA00CF620A /* Sources */,
 				57F6FAF52E2910BA00CF620A /* Frameworks */,
 				57F6FAF62E2910BA00CF620A /* Resources */,
+				57DF1EE62E2A38C500621B93 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				57DF1F222E2A66DD00621B93 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				57F6FAFA2E2910BA00CF620A /* Rapid Notes */,
@@ -173,6 +255,10 @@
 				LastSwiftUpdateCheck = 1640;
 				LastUpgradeCheck = 1640;
 				TargetAttributes = {
+					57DF1F112E2A66DC00621B93 = {
+						CreatedOnToolsVersion = 16.4;
+						LastSwiftMigration = 1640;
+					};
 					57F6FAF72E2910BA00CF620A = {
 						CreatedOnToolsVersion = 16.4;
 					};
@@ -203,11 +289,19 @@
 				57F6FAF72E2910BA00CF620A /* Rapid Notes */,
 				57F6FB052E2910BB00CF620A /* Rapid NotesTests */,
 				57F6FB0F2E2910BB00CF620A /* Rapid NotesUITests */,
+				57DF1F112E2A66DC00621B93 /* QuickDumpWidgetExtensionExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		57DF1F102E2A66DC00621B93 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		57F6FAF62E2910BA00CF620A /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -232,6 +326,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		57DF1F0E2E2A66DC00621B93 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		57F6FAF42E2910BA00CF620A /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -256,6 +357,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		57DF1F222E2A66DD00621B93 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 57DF1F112E2A66DC00621B93 /* QuickDumpWidgetExtensionExtension */;
+			targetProxy = 57DF1F212E2A66DD00621B93 /* PBXContainerItemProxy */;
+		};
 		57F6FB082E2910BB00CF620A /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 57F6FAF72E2910BA00CF620A /* Rapid Notes */;
@@ -269,6 +375,66 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		57DF1F262E2A66DD00621B93 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = QuickDumpWidgetExtensionExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 7R8XD8NCB2;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = WidgetInfo.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "Theory-of-Web.Rapid-Notes.QuickDumpWidgetExtension";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		57DF1F272E2A66DD00621B93 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = QuickDumpWidgetExtensionExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 7R8XD8NCB2;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = WidgetInfo.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "Theory-of-Web.Rapid-Notes.QuickDumpWidgetExtension";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 		57F6FB182E2910BB00CF620A /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -389,10 +555,16 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = "Rapid Notes/Rapid_Notes.entitlements";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 7R8XD8NCB2;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleURLTypes = "{\n    CFBundleURLName = \"Theory-of-Web.Rapid-Notes\";\n    CFBundleURLSchemes =     (\n        quickdump\n    );\n}";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "This app uses location to tag your notes with where you were when you created them";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "This app needs microphone access to record voice notes";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "This app uses speech recognition to convert your voice notes to text";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -403,7 +575,7 @@
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 15.5;
@@ -426,10 +598,16 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = "Rapid Notes/Rapid_Notes.entitlements";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 7R8XD8NCB2;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleURLTypes = "{\n    CFBundleURLName = \"Theory-of-Web.Rapid-Notes\";\n    CFBundleURLSchemes =     (\n        quickdump\n    );\n}";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "This app uses location to tag your notes with where you were when you created them";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "This app needs microphone access to record voice notes";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "This app uses speech recognition to convert your voice notes to text";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -440,7 +618,7 @@
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 15.5;
@@ -546,6 +724,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		57DF1F252E2A66DD00621B93 /* Build configuration list for PBXNativeTarget "QuickDumpWidgetExtensionExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				57DF1F262E2A66DD00621B93 /* Debug */,
+				57DF1F272E2A66DD00621B93 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		57F6FAF32E2910BA00CF620A /* Build configuration list for PBXProject "Rapid Notes" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
