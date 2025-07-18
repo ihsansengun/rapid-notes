@@ -95,3 +95,8 @@ iOSInjectionProject/
 
 # API Keys and secrets
 Config.swift
+
+# Documentation
+docs/
+*.md
+!README.md
