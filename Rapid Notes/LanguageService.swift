@@ -162,7 +162,16 @@ class LanguageService: ObservableObject {
     
     /// Change the current language
     func setLanguage(_ language: SupportedLanguage) {
-        currentLanguage = language
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            self.currentLanguage = language
+            self.saveLanguagePreference()
+            
+            // Notify other services about the language change
+            NotificationCenter.default.post(name: NSNotification.Name("LanguageChanged"), object: language)
+            
+            print("🌍 Language changed to: \(language.displayName) (\(language.rawValue))")
+        }
     }
     
     /// Save language preference to UserDefaults
@@ -213,17 +222,56 @@ class LanguageService: ObservableObject {
         print("=== Language Support Debug ===")
         print("Current Language: \(currentLanguage.displayName) (\(currentLanguage.rawValue))")
         print("Auto-detect: \(autoDetectLanguage)")
+        print("Device Locale: \(Locale.current.identifier)")
         print("Available Languages:")
         
         print("iOS Supported Locales: \(SFSpeechRecognizer.supportedLocales().map { $0.identifier }.sorted())")
         
+        // Check Turkish specifically
+        let turkishLocale = Locale(identifier: "tr-TR")
+        let turkishSupported = SFSpeechRecognizer.supportedLocales().contains(turkishLocale)
+        let turkishRecognizer = SFSpeechRecognizer(locale: turkishLocale)
+        print("Turkish (tr-TR) Details:")
+        print("  - Locale supported: \(turkishSupported)")
+        print("  - Recognizer created: \(turkishRecognizer != nil)")
+        print("  - Recognizer available: \(turkishRecognizer?.isAvailable ?? false)")
+        
         for language in SupportedLanguage.allCases {
             let supported = language.isSpeechRecognitionSupported ? "✓" : "✗"
             let recognizer = speechRecognizers[language] != nil ? "R" : "-"
-            print("  \(supported)\(recognizer) \(language.flag) \(language.displayName) (\(language.rawValue))")
+            let available = speechRecognizers[language]?.isAvailable == true ? "A" : "-"
+            print("  \(supported)\(recognizer)\(available) \(language.flag) \(language.displayName) (\(language.rawValue))")
         }
         
         print("Speech recognizers initialized: \(speechRecognizers.count)")
+        print("================================")
+    }
+    
+    /// Test Turkish language detection specifically
+    func debugTurkishSupport() {
+        print("=== Turkish Language Debug ===")
+        let turkishTestPhrases = [
+            "Merhaba, nasılsınız?",
+            "Bu bir test metnidir.",
+            "Türkçe konuşma tanıma testi yapıyorum.",
+            "İstanbul çok güzel bir şehir.",
+            "Teşekkür ederim."
+        ]
+        
+        let detector = LanguageDetector.shared
+        
+        for phrase in turkishTestPhrases {
+            print("Testing: \"\(phrase)\"")
+            let (language, confidence) = detector.detectLanguageWithConfidence(from: phrase)
+            print("  Detected: \(language?.displayName ?? "Unknown") (confidence: \(String(format: "%.2f", confidence)))")
+            
+            let hypotheses = detector.getLanguageHypotheses(from: phrase, maxCount: 3)
+            print("  Top hypotheses:")
+            for (lang, conf) in hypotheses {
+                print("    - \(lang.displayName): \(String(format: "%.2f", conf))")
+            }
+            print()
+        }
         print("================================")
     }
 }

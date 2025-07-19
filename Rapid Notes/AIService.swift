@@ -380,6 +380,213 @@ class AIService: ObservableObject {
         return nil
     }
     
+    /// Advanced transcript correction specifically for proper names and technical terms
+    func correctProperNames(_ transcription: String, language: SupportedLanguage, context: String? = nil) async -> TranscriptCorrectionResult? {
+        guard Config.hasValidOpenAIKey else { return nil }
+        
+        let languageContext = languageService.getAIContext(for: language)
+        let contextInfo = context ?? "General note-taking context"
+        
+        let prompt = """
+        \(languageContext)
+        
+        You are a transcript correction specialist. Fix this voice transcription with focus on:
+        
+        1. **Proper Names**: Correct misspelled names of people, places, companies, brands
+        2. **Technical Terms**: Fix specialized terminology 
+        3. **Context Clues**: Use context to disambiguate unclear words
+        4. **Preserve Meaning**: Maintain the speaker's original intent
+        
+        Context: \(contextInfo)
+        Original: "\(transcription)"
+        
+        Respond in JSON format:
+        {
+            "corrected_text": "The corrected transcription",
+            "corrections": [
+                {"original": "wrong word", "corrected": "correct word", "confidence": 0.95, "reason": "proper name correction"}
+            ],
+            "confidence_score": 0.9
+        }
+        """
+        
+        let requestBody: [String: Any] = [
+            "model": "gpt-4",  // Use GPT-4 for better correction quality
+            "messages": [
+                [
+                    "role": "system",
+                    "content": "You are an expert transcription corrector specializing in proper names and technical terms."
+                ],
+                [
+                    "role": "user",
+                    "content": prompt
+                ]
+            ],
+            "max_tokens": 500,
+            "temperature": 0.1  // Low temperature for consistent corrections
+        ]
+        
+        do {
+            guard let url = URL(string: openAIEndpoint) else { return nil }
+            
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.setValue("Bearer \(Config.openAIAPIKey)", forHTTPHeaderField: "Authorization")
+            request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+            
+            let (data, _) = try await URLSession.shared.data(for: request)
+            
+            if let response = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let choices = response["choices"] as? [[String: Any]],
+               let firstChoice = choices.first,
+               let message = firstChoice["message"] as? [String: Any],
+               let content = message["content"] as? String {
+                
+                return parseTranscriptCorrectionResponse(content, originalText: transcription)
+            }
+            
+        } catch {
+            print("OpenAI transcript correction error: \(error)")
+        }
+        
+        return nil
+    }
+    
+    /// Compare two transcripts and suggest which is better
+    func compareTranscripts(_ transcript1: String, _ transcript2: String, language: SupportedLanguage) async -> TranscriptComparisonAnalysis? {
+        guard Config.hasValidOpenAIKey else { return nil }
+        
+        let languageContext = languageService.getAIContext(for: language)
+        
+        let prompt = """
+        \(languageContext)
+        
+        Compare these two transcripts of the same audio and determine which is better:
+        
+        Transcript A: "\(transcript1)"
+        Transcript B: "\(transcript2)"
+        
+        Evaluate based on:
+        1. Proper name accuracy
+        2. Grammar and flow
+        3. Technical term correctness
+        4. Overall coherence
+        
+        Respond in JSON format:
+        {
+            "recommended": "A" or "B",
+            "confidence": 0.85,
+            "reasons": ["reason1", "reason2"],
+            "hybrid_suggestion": "Optional improved version combining both"
+        }
+        """
+        
+        let requestBody: [String: Any] = [
+            "model": "gpt-3.5-turbo",
+            "messages": [
+                [
+                    "role": "user",
+                    "content": prompt
+                ]
+            ],
+            "max_tokens": 400,
+            "temperature": 0.2
+        ]
+        
+        do {
+            guard let url = URL(string: openAIEndpoint) else { return nil }
+            
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.setValue("Bearer \(Config.openAIAPIKey)", forHTTPHeaderField: "Authorization")
+            request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+            
+            let (data, _) = try await URLSession.shared.data(for: request)
+            
+            if let response = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let choices = response["choices"] as? [[String: Any]],
+               let firstChoice = choices.first,
+               let message = firstChoice["message"] as? [String: Any],
+               let content = message["content"] as? String {
+                
+                return parseTranscriptComparisonResponse(content)
+            }
+            
+        } catch {
+            print("OpenAI transcript comparison error: \(error)")
+        }
+        
+        return nil
+    }
+    
+    private func parseTranscriptCorrectionResponse(_ content: String, originalText: String) -> TranscriptCorrectionResult? {
+        do {
+            guard let data = content.data(using: .utf8),
+                  let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                return nil
+            }
+            
+            let correctedText = json["corrected_text"] as? String ?? originalText
+            let confidenceScore = json["confidence_score"] as? Double ?? 0.5
+            
+            var corrections: [TextCorrection] = []
+            if let correctionsArray = json["corrections"] as? [[String: Any]] {
+                for correctionData in correctionsArray {
+                    if let original = correctionData["original"] as? String,
+                       let corrected = correctionData["corrected"] as? String {
+                        let confidence = correctionData["confidence"] as? Double ?? 0.5
+                        let reason = correctionData["reason"] as? String ?? "Unknown"
+                        
+                        corrections.append(TextCorrection(
+                            original: original,
+                            corrected: corrected,
+                            confidence: confidence,
+                            reason: reason
+                        ))
+                    }
+                }
+            }
+            
+            return TranscriptCorrectionResult(
+                originalText: originalText,
+                correctedText: correctedText,
+                corrections: corrections,
+                confidenceScore: confidenceScore
+            )
+            
+        } catch {
+            print("Failed to parse transcript correction response: \(error)")
+            return nil
+        }
+    }
+    
+    private func parseTranscriptComparisonResponse(_ content: String) -> TranscriptComparisonAnalysis? {
+        do {
+            guard let data = content.data(using: .utf8),
+                  let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                return nil
+            }
+            
+            let recommended = json["recommended"] as? String ?? "A"
+            let confidence = json["confidence"] as? Double ?? 0.5
+            let reasons = json["reasons"] as? [String] ?? []
+            let hybridSuggestion = json["hybrid_suggestion"] as? String
+            
+            return TranscriptComparisonAnalysis(
+                recommendedTranscript: recommended,
+                confidence: confidence,
+                reasons: reasons,
+                hybridSuggestion: hybridSuggestion
+            )
+            
+        } catch {
+            print("Failed to parse transcript comparison response: \(error)")
+            return nil
+        }
+    }
+    
     /// Get language-specific suggestions for better note organization
     func getOrganizationSuggestions(for content: String, language: SupportedLanguage) async -> [String] {
         guard Config.hasValidOpenAIKey else {
@@ -388,7 +595,8 @@ class AIService: ObservableObject {
         
         let languageContext = languageService.getAIContext(for: language)
         
-        let prompt = """
+        // TODO: Implement OpenAI API call for organization suggestions
+        let _ = """
         \(languageContext)
         
         Suggest 3 ways to better organize or expand this note:
@@ -436,5 +644,44 @@ class AIService: ObservableObject {
         
         print("OpenAI API available: \(Config.hasValidOpenAIKey)")
         print("========================")
+    }
+}
+
+// MARK: - Enhanced Transcript Correction Models
+
+struct TranscriptCorrectionResult {
+    let originalText: String
+    let correctedText: String
+    let corrections: [TextCorrection]
+    let confidenceScore: Double
+    
+    var hasCorrections: Bool {
+        return !corrections.isEmpty
+    }
+    
+    var isHighConfidence: Bool {
+        return confidenceScore >= 0.8
+    }
+}
+
+struct TextCorrection {
+    let original: String
+    let corrected: String
+    let confidence: Double
+    let reason: String
+    
+    var isHighConfidence: Bool {
+        return confidence >= 0.8
+    }
+}
+
+struct TranscriptComparisonAnalysis {
+    let recommendedTranscript: String // "A" or "B"
+    let confidence: Double
+    let reasons: [String]
+    let hybridSuggestion: String?
+    
+    var isConfidentRecommendation: Bool {
+        return confidence >= 0.7
     }
 }

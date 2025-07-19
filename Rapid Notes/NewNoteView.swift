@@ -17,6 +17,11 @@ struct NewNoteView: View {
     @State private var showingLanguageMismatch = false
     @State private var detectedLanguageMismatch: (detected: SupportedLanguage, confidence: Double)?
     
+    // Transcript review states
+    @State private var showingTranscriptReview = false
+    @State private var showingFloatingReviewPrompt = false
+    @State private var isReprocessing = false
+    
     var body: some View {
         NavigationView {
             VStack(spacing: 20) {
@@ -47,8 +52,8 @@ struct NewNoteView: View {
             }
         }
         .onAppear {
-            // Auto-start recording if launched from widget or manually opened
-            if !isTyping {
+            // Only start recording if launched from widget
+            if launchedFromWidget && !isTyping {
                 startVoiceRecording()
             }
         }
@@ -73,6 +78,12 @@ struct NewNoteView: View {
         .overlay(
             languageMismatchOverlay
         )
+        .overlay(
+            transcriptReviewOverlay
+        )
+        .overlay(
+            floatingReviewPromptOverlay
+        )
     }
     
     private var voiceRecordingView: some View {
@@ -91,26 +102,50 @@ struct NewNoteView: View {
                     .background(Color.gray.opacity(0.1))
                     .cornerRadius(10)
                 
-                // Language detection indicator
-                if let detectedLang = speechService.detectedLanguage,
-                   speechService.languageConfidence > 0.5 {
-                    HStack {
-                        Image(systemName: "waveform.path.ecg")
-                            .font(.caption)
-                            .foregroundColor(.blue)
-                        
-                        Text("Detected: \(detectedLang.flag) \(detectedLang.displayName)")
-                            .font(.caption)
-                            .foregroundColor(.blue)
-                        
-                        Text("(\(Int(speechService.languageConfidence * 100))%)")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
+                // Language detection and quality indicators
+                HStack {
+                    // Language detection indicator
+                    if let detectedLang = speechService.detectedLanguage,
+                       speechService.languageConfidence > 0.5 {
+                        HStack {
+                            Image(systemName: "waveform.path.ecg")
+                                .font(.caption)
+                                .foregroundColor(.blue)
+                            
+                            Text("Detected: \(detectedLang.flag) \(detectedLang.displayName)")
+                                .font(.caption)
+                                .foregroundColor(.blue)
+                            
+                            Text("(\(Int(speechService.languageConfidence * 100))%)")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.blue.opacity(0.1))
+                        .cornerRadius(6)
                     }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Color.blue.opacity(0.1))
-                    .cornerRadius(6)
+                    
+                    Spacer()
+                    
+                    // Transcript quality indicator
+                    if let finalResult = speechService.finalResult {
+                        TranscriptQualityIndicator(
+                            transcriptResult: finalResult,
+                            showDetails: false
+                        )
+                    }
+                    
+                    // Whisper processing indicator
+                    if speechService.isProcessingWhisper {
+                        HStack(spacing: 4) {
+                            ProgressView()
+                                .scaleEffect(0.7)
+                            Text("Processing...")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
+                    }
                 }
             }
             
@@ -121,6 +156,12 @@ struct NewNoteView: View {
         .onReceive(speechService.$transcribedText) { transcribedText in
             // Check for language mismatch when transcription is updated
             checkForLanguageMismatch(transcribedText)
+        }
+        .onReceive(speechService.$finalResult) { finalResult in
+            // Check if transcript needs review
+            if let result = finalResult, result.needsReview && !showingTranscriptReview {
+                showFloatingReviewPrompt()
+            }
         }
     }
     
@@ -229,6 +270,54 @@ struct NewNoteView: View {
         }
     }
     
+    @ViewBuilder
+    private var transcriptReviewOverlay: some View {
+        if showingTranscriptReview,
+           let finalResult = speechService.finalResult {
+            Color.black.opacity(0.3)
+                .ignoresSafeArea()
+                .overlay(
+                    TranscriptReviewView(
+                        transcriptResult: finalResult,
+                        onAccept: {
+                            showingTranscriptReview = false
+                            showingFloatingReviewPrompt = false
+                        },
+                        onEdit: { editedText in
+                            speechService.transcribedText = editedText
+                            showingTranscriptReview = false
+                            showingFloatingReviewPrompt = false
+                        },
+                        onReprocess: {
+                            reprocessTranscript()
+                        },
+                        onDismiss: {
+                            showingTranscriptReview = false
+                        }
+                    )
+                )
+                .transition(.opacity)
+        }
+    }
+    
+    @ViewBuilder
+    private var floatingReviewPromptOverlay: some View {
+        if showingFloatingReviewPrompt,
+           let finalResult = speechService.finalResult,
+           !showingTranscriptReview {
+            FloatingTranscriptReviewPrompt(
+                transcriptResult: finalResult,
+                onShowReview: {
+                    showingFloatingReviewPrompt = false
+                    showingTranscriptReview = true
+                },
+                onDismiss: {
+                    showingFloatingReviewPrompt = false
+                }
+            )
+        }
+    }
+    
     private func startVoiceRecording() {
         locationService.requestLocation()
         speechService.startRecording()
@@ -272,21 +361,76 @@ struct NewNoteView: View {
         }
     }
     
+    private func showFloatingReviewPrompt() {
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+            showingFloatingReviewPrompt = true
+        }
+        
+        // Auto-dismiss after 15 seconds
+        DispatchQueue.main.asyncAfter(deadline: .now() + 15) {
+            if showingFloatingReviewPrompt && !showingTranscriptReview {
+                withAnimation {
+                    showingFloatingReviewPrompt = false
+                }
+            }
+        }
+    }
+    
+    private func reprocessTranscript() {
+        guard let finalResult = speechService.finalResult else { return }
+        
+        isReprocessing = true
+        showingTranscriptReview = false
+        
+        Task {
+            // Use enhanced GPT correction
+            if let correctedResult = await aiService.correctProperNames(
+                finalResult.chosenTranscript,
+                language: speechService.currentLanguage
+            ) {
+                await MainActor.run {
+                    speechService.transcribedText = correctedResult.correctedText
+                    isReprocessing = false
+                    
+                    // Show corrections if any were made
+                    if correctedResult.hasCorrections {
+                        print("🔧 Applied \(correctedResult.corrections.count) corrections")
+                        for correction in correctedResult.corrections {
+                            print("  • \(correction.original) → \(correction.corrected) (\(correction.reason))")
+                        }
+                    }
+                }
+            } else {
+                await MainActor.run {
+                    isReprocessing = false
+                }
+            }
+        }
+    }
+    
     private func saveNote() async {
         let finalText = isTyping ? noteText : speechService.transcribedText
         guard !finalText.isEmpty else { return }
         
         // Get language information
-        let noteLanguage = speechService.currentLanguage
         let (detectedLang, confidence) = await withCheckedContinuation { continuation in
             DispatchQueue.main.async {
                 if let detected = speechService.detectedLanguage {
                     continuation.resume(returning: (detected, speechService.languageConfidence))
                 } else {
-                    continuation.resume(returning: (noteLanguage, 1.0))
+                    continuation.resume(returning: (speechService.currentLanguage, 1.0))
                 }
             }
         }
+        
+        // Use detected language as the note language if confidence is high enough
+        let noteLanguage = (confidence > 0.6) ? detectedLang : speechService.currentLanguage
+        
+        print("💾 Saving note with language info:")
+        print("   Current Language: \(speechService.currentLanguage.displayName) (\(speechService.currentLanguage.rawValue))")
+        print("   Detected Language: \(detectedLang.displayName) (\(detectedLang.rawValue))")
+        print("   Confidence: \(String(format: "%.2f", confidence))")
+        print("   Note Language (final): \(noteLanguage.displayName) (\(noteLanguage.rawValue))")
         
         let note = Note(context: viewContext)
         note.id = UUID()

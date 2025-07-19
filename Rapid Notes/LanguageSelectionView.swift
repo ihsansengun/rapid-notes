@@ -37,8 +37,11 @@ struct LanguageSelectionView: View {
                 }
             }
             .navigationTitle("Language Settings")
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
+                #if os(iOS)
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") {
                         dismiss()
@@ -51,6 +54,20 @@ struct LanguageSelectionView: View {
                     }
                     .fontWeight(.semibold)
                 }
+                #else
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+                
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                    .fontWeight(.semibold)
+                }
+                #endif
             }
         }
     }
@@ -60,8 +77,10 @@ struct LanguageSelectionView: View {
         onLanguageSelected?(language)
         
         // Haptic feedback
+        #if os(iOS)
         let impactFeedback = UIImpactFeedbackGenerator(style: .light)
         impactFeedback.impactOccurred()
+        #endif
     }
 }
 
@@ -103,7 +122,7 @@ struct LanguageRow: View {
 
 /// Compact language picker for inline use
 struct LanguagePicker: View {
-    @StateObject private var languageService = LanguageService.shared
+    @ObservedObject private var languageService = LanguageService.shared
     @State private var showingLanguageSelection = false
     
     let title: String
@@ -146,7 +165,7 @@ struct LanguagePicker: View {
 
 /// Quick language switcher for recording interface
 struct QuickLanguageSwitcher: View {
-    @StateObject private var languageService = LanguageService.shared
+    @ObservedObject private var languageService = LanguageService.shared
     @State private var showingAllLanguages = false
     
     var body: some View {
@@ -158,6 +177,12 @@ struct QuickLanguageSwitcher: View {
                 HStack(spacing: 4) {
                     Text(languageService.currentLanguage.flag)
                         .font(.title3)
+                        .onAppear {
+                            print("🎌 QuickLanguageSwitcher displaying: \(languageService.currentLanguage.displayName) (\(languageService.currentLanguage.flag))")
+                        }
+                        .onChange(of: languageService.currentLanguage) { newLanguage in
+                            print("🔄 QuickLanguageSwitcher language changed to: \(newLanguage.displayName) (\(newLanguage.flag))")
+                        }
                     
                     Text(languageService.currentLanguage.displayName)
                         .font(.caption)
@@ -169,7 +194,7 @@ struct QuickLanguageSwitcher: View {
                 }
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
-                .background(Color(.systemGray6))
+                .background(Color.gray.opacity(0.1))
                 .cornerRadius(8)
             }
             
@@ -256,7 +281,7 @@ struct LanguageMismatchView: View {
             }
         }
         .padding()
-        .background(Color(.systemGray6))
+        .background(Color.gray.opacity(0.1))
         .cornerRadius(12)
         .padding(.horizontal)
     }

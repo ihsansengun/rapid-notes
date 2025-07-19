@@ -58,9 +58,15 @@ struct ContentView: View {
                             onSettings: { showingSettings = true }
                         )
                     case .settings:
-                        SettingsScreen(
-                            onDismiss: { currentScreen = .notesList }
-                        )
+                        SettingsView()
+                            .navigationBarHidden(false)
+                            .toolbar {
+                                ToolbarItem(placement: .navigationBarLeading) {
+                                    Button("Back") {
+                                        currentScreen = .notesList
+                                    }
+                                }
+                            }
                     }
                 }
                 .transition(.asymmetric(
@@ -88,7 +94,7 @@ struct ContentView: View {
             
             // Handle preferred mode from widget
             if let userInfo = notification.userInfo,
-               let preferredMode = userInfo["preferredMode"] as? String {
+               let _ = userInfo["preferredMode"] as? String {
                 // You can pass this to NewNoteScreen if needed
                 // For now, the NewNoteScreen will handle it internally
             }
@@ -235,15 +241,6 @@ struct NewNoteScreen: View {
         .background(Color.black)
         .onAppear {
             locationService.requestLocation()
-            
-            // Auto-start recording on app launch (voice-first approach)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                if !recordingState.isRecording {
-                    recordingState.startRecording()
-                    shouldAutoRecord = true
-                    startAutoSaveTimer()
-                }
-            }
         }
         .onReceive(NotificationCenter.default.publisher(for: Notification.Name("openNewNote"))) { notification in
             // Auto-start recording if launched from widget
@@ -288,10 +285,13 @@ struct NewNoteScreen: View {
         
         // Start a timer that will auto-save after 3 seconds of silence
         autoSaveTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: false) { _ in
+            print("🕐 Auto-save timer fired - shouldAutoRecord: \(shouldAutoRecord), isRecording: \(recordingState.isRecording), hasText: \(!recordingState.transcribedText.isEmpty)")
             if shouldAutoRecord && recordingState.isRecording && !recordingState.transcribedText.isEmpty {
-                // Auto-save if there's content
+                print("✅ Auto-save conditions met - stopping recording and saving")
                 recordingState.stopRecording()
                 saveVoiceNote()
+            } else {
+                print("❌ Auto-save conditions not met - skipping save")
             }
         }
     }
@@ -313,6 +313,25 @@ struct NewNoteScreen: View {
         note.latitude = locationService.currentLocation?.coordinate.latitude ?? 0
         note.longitude = locationService.currentLocation?.coordinate.longitude ?? 0
         note.locationName = locationService.currentLocationName
+        
+        // Set language information from speech service
+        let currentLanguage = recordingState.speechService.currentLanguage
+        let detectedLanguage = recordingState.speechService.detectedLanguage
+        let confidence = recordingState.speechService.languageConfidence
+        
+        // Use detected language if confidence is high enough, otherwise use current language
+        let noteLanguage = (detectedLanguage != nil && confidence > 0.6) ? detectedLanguage! : currentLanguage
+        
+        print("💾 Saving voice note with language info:")
+        print("   Current Language: \(currentLanguage.displayName) (\(currentLanguage.rawValue))")
+        print("   Detected Language: \(detectedLanguage?.displayName ?? "None") (\(detectedLanguage?.rawValue ?? "None"))")
+        print("   Confidence: \(String(format: "%.2f", confidence))")
+        print("   Note Language (final): \(noteLanguage.displayName) (\(noteLanguage.rawValue))")
+        
+        note.setLanguage(noteLanguage)
+        if let detected = detectedLanguage {
+            note.setDetectedLanguage(detected, confidence: confidence)
+        }
         
         do {
             try viewContext.save()
@@ -435,6 +454,12 @@ struct TextNoteScreen: View {
         note.latitude = locationService.currentLocation?.coordinate.latitude ?? 0
         note.longitude = locationService.currentLocation?.coordinate.longitude ?? 0
         note.locationName = locationService.currentLocationName
+        
+        // Set language information (for text notes, use current language)
+        let noteLanguage = LanguageService.shared.currentLanguage
+        note.setLanguage(noteLanguage)
+        
+        print("💾 Saving text note with language: \(noteLanguage.displayName) (\(noteLanguage.rawValue))")
         
         do {
             try viewContext.save()
@@ -744,7 +769,7 @@ class RecordingState: ObservableObject {
     @Published var isEmpty = true
     @Published var transcribedText = ""
     
-    private let speechService = SpeechService()
+    let speechService = SpeechService()
     
     init() {
         // Observe speech service changes
@@ -895,7 +920,11 @@ struct SettingsScreen: View {
                         .padding()
                     
                     DatePicker("Reminder Time", selection: $reminderTime, displayedComponents: .hourAndMinute)
+                        #if os(iOS)
                         .datePickerStyle(WheelDatePickerStyle())
+                        #else
+                        .datePickerStyle(DefaultDatePickerStyle())
+                        #endif
                         .labelsHidden()
                         .padding()
                     
@@ -903,8 +932,11 @@ struct SettingsScreen: View {
                 }
                 .background(Color.black)
                 .navigationTitle("Reminder")
+                #if os(iOS)
                 .navigationBarTitleDisplayMode(.inline)
+                #endif
                 .toolbar {
+                    #if os(iOS)
                     ToolbarItem(placement: .navigationBarTrailing) {
                         Button("Done") {
                             showingReminderPicker = false
@@ -921,6 +953,24 @@ struct SettingsScreen: View {
                         }
                         .foregroundColor(.blue)
                     }
+                    #else
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Done") {
+                            showingReminderPicker = false
+                            // Save reminder preference
+                            UserDefaults.standard.set(reminderTime.timeIntervalSince1970, forKey: "reminderTime")
+                            // Schedule the reminder notification
+                            scheduleReminderNotification()
+                        }
+                        .foregroundColor(.blue)
+                    }
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") {
+                            showingReminderPicker = false
+                        }
+                        .foregroundColor(.blue)
+                    }
+                    #endif
                 }
             }
             .preferredColorScheme(.dark)
@@ -954,10 +1004,10 @@ struct SettingsScreen: View {
                 }
             }
         }
-        .onChange(of: faceIDEnabled) { _ in
+        .onChange(of: faceIDEnabled) {
             UserDefaults.standard.set(faceIDEnabled, forKey: "faceIDEnabled")
         }
-        .onChange(of: aiTaggingEnabled) { _ in
+        .onChange(of: aiTaggingEnabled) {
             UserDefaults.standard.set(aiTaggingEnabled, forKey: "aiTaggingEnabled")
         }
     }
@@ -1040,13 +1090,15 @@ struct SettingsSheet: View {
     @Environment(\.dismiss) private var dismiss
     
     var body: some View {
-        NavigationView {
-            SettingsScreen(onDismiss: { dismiss() })
-        }
-        #if os(iOS)
-        .navigationViewStyle(StackNavigationViewStyle())
-        #endif
-        .preferredColorScheme(.dark)
+        SettingsView()
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+            .preferredColorScheme(.dark)
     }
 }
 
@@ -1187,14 +1239,25 @@ struct WidgetInstructionsView: View {
             }
             .background(Color.black)
             .navigationTitle("Widget Setup")
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
+                #if os(iOS)
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") {
                         dismiss()
                     }
                     .foregroundColor(.blue)
                 }
+                #else
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                    .foregroundColor(.blue)
+                }
+                #endif
             }
         }
         .preferredColorScheme(.dark)
@@ -1268,9 +1331,17 @@ struct LanguageDebugSection: View {
                         .font(.system(size: 14))
                         .foregroundColor(.white.opacity(0.8))
                     
-                    Text("Auto-detect: \(languageService.autoDetectLanguage ? "ON" : "OFF")")
-                        .font(.system(size: 14))
-                        .foregroundColor(.white.opacity(0.8))
+                    HStack {
+                        Text("Auto-detect:")
+                            .font(.system(size: 14))
+                            .foregroundColor(.white.opacity(0.8))
+                        
+                        Spacer()
+                        
+                        Toggle("", isOn: $languageService.autoDetectLanguage)
+                            .labelsHidden()
+                            .scaleEffect(0.8)
+                    }
                     
                     Text("Available Languages:")
                         .font(.system(size: 14, weight: .medium))
@@ -1289,12 +1360,37 @@ struct LanguageDebugSection: View {
                         .foregroundColor(.white.opacity(0.7))
                     }
                     
-                    Button("Print Debug Info") {
-                        languageService.debugLanguageSupport()
+                    VStack(spacing: 8) {
+                        HStack(spacing: 12) {
+                            Button("Debug General") {
+                                languageService.debugLanguageSupport()
+                            }
+                            .foregroundColor(.blue)
+                            .font(.system(size: 14, weight: .medium))
+                            
+                            Button("Debug Turkish") {
+                                languageService.debugTurkishSupport()
+                            }
+                            .foregroundColor(.orange)
+                            .font(.system(size: 14, weight: .medium))
+                        }
+                        
+                        HStack(spacing: 12) {
+                            Button("Debug Whisper") {
+                                Config.debugWhisperConfiguration()
+                            }
+                            .foregroundColor(.purple)
+                            .font(.system(size: 14, weight: .medium))
+                            
+                            Button(Config.enableDualEngineTranscription ? "Disable Dual-Engine" : "Enable Dual-Engine") {
+                                Config.enableDualEngineTranscription.toggle()
+                                print("🔄 Dual-Engine Transcription: \(Config.enableDualEngineTranscription ? "ENABLED" : "DISABLED")")
+                            }
+                            .foregroundColor(Config.enableDualEngineTranscription ? .red : .green)
+                            .font(.system(size: 14, weight: .medium))
+                        }
                     }
                     .padding(.top, 8)
-                    .foregroundColor(.blue)
-                    .font(.system(size: 14, weight: .medium))
                 }
                 .padding(.top, 8)
             }

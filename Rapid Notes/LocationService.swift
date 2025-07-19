@@ -22,9 +22,15 @@ class LocationService: NSObject, ObservableObject, CLLocationManagerDelegate {
         #endif
         
         // Request location immediately if authorized
+        #if os(iOS)
         if authorizationStatus == .authorizedWhenInUse || authorizationStatus == .authorizedAlways {
             requestLocation()
         }
+        #elseif os(macOS)
+        if authorizationStatus == .authorizedAlways {
+            requestLocation()
+        }
+        #endif
     }
     
     func requestLocation() {
@@ -61,9 +67,15 @@ class LocationService: NSObject, ObservableObject, CLLocationManagerDelegate {
         authorizationStatus = status
         
         // Request location when authorization is granted
+        #if os(iOS)
         if status == .authorizedWhenInUse || status == .authorizedAlways {
             requestLocation()
         }
+        #elseif os(macOS)
+        if status == .authorizedAlways {
+            requestLocation()
+        }
+        #endif
     }
     
     func getLocationName() -> String {

@@ -93,7 +93,7 @@ struct NoteCardView: View {
                 }
             }
             .padding()
-            .background(Color(.systemGray6))
+            .background(Color.gray.opacity(0.1))
             .cornerRadius(12)
         }
         .buttonStyle(PlainButtonStyle())

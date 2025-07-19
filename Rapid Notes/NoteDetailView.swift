@@ -184,12 +184,21 @@ struct NoteDetailView: View {
         #endif
         .preferredColorScheme(.dark)
         .toolbar {
+            #if os(iOS)
             ToolbarItem(placement: .primaryAction) {
                 Button("Done") {
                     dismiss()
                 }
                 .foregroundColor(.blue)
             }
+            #else
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Done") {
+                    dismiss()
+                }
+                .foregroundColor(.blue)
+            }
+            #endif
         }
         .sheet(isPresented: $showingMap) {
             if note.latitude != 0 && note.longitude != 0 {
@@ -299,31 +308,69 @@ struct MapView: View {
     
     var body: some View {
         NavigationView {
-            Map(coordinateRegion: .constant(MKCoordinateRegion(
-                center: CLLocationCoordinate2D(latitude: latitude, longitude: longitude),
-                span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
-            )), annotationItems: [MapLocation(coordinate: CLLocationCoordinate2D(latitude: latitude, longitude: longitude), name: locationName)]) { location in
-                MapPin(coordinate: location.coordinate, tint: .blue)
+            VStack(spacing: 20) {
+                Text("📍 Note Location")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.white)
+                
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Location: \(locationName)")
+                        .font(.body)
+                        .foregroundColor(.white)
+                    
+                    Text("Coordinates:")
+                        .font(.caption)
+                        .foregroundColor(.white.opacity(0.7))
+                    
+                    Text("Lat: \(String(format: "%.6f", latitude))")
+                        .font(.caption)
+                        .foregroundColor(.white.opacity(0.8))
+                    
+                    Text("Lng: \(String(format: "%.6f", longitude))")
+                        .font(.caption)
+                        .foregroundColor(.white.opacity(0.8))
+                }
+                .padding()
+                .background(Color.white.opacity(0.1))
+                .cornerRadius(12)
+                
+                // Note: Map functionality temporarily simplified
+                // The full map view with annotations will be restored
+                // once SwiftUI Map API compatibility issues are resolved
+                Text("📍 Map view temporarily unavailable")
+                    .font(.caption)
+                    .foregroundColor(.white.opacity(0.6))
+                    .italic()
+                
+                Spacer()
             }
+            .padding()
+            .background(Color.black)
             .navigationTitle("Note Location")
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
+                #if os(iOS)
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") {
                         dismiss()
                     }
                     .foregroundColor(.blue)
                 }
+                #else
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                    .foregroundColor(.blue)
+                }
+                #endif
             }
         }
         .preferredColorScheme(.dark)
     }
-}
-
-struct MapLocation: Identifiable {
-    let id = UUID()
-    let coordinate: CLLocationCoordinate2D
-    let name: String
 }
 
 #Preview {

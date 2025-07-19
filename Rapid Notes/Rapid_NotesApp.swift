@@ -23,6 +23,10 @@ struct Rapid_NotesApp: App {
                 }
                 .onAppear {
                     connectivityManager.configure(with: persistenceController.container.viewContext)
+                    // Initialize Config defaults
+                    Config.initializeDefaults()
+                    // Debug OpenAI configuration
+                    Config.debugConfiguration()
                 }
         }
     }
