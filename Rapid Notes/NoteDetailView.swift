@@ -50,6 +50,33 @@ struct NoteDetailView: View {
                             .foregroundColor(.white.opacity(0.8))
                     }
                     
+                    // Language information
+                    HStack(spacing: 12) {
+                        Image(systemName: "globe")
+                            .font(.system(size: 16))
+                            .foregroundColor(.white.opacity(0.6))
+                        
+                        HStack(spacing: 6) {
+                            Text(note.languageFlag)
+                                .font(.system(size: 14))
+                            
+                            Text(note.languageDisplayName)
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.white.opacity(0.8))
+                            
+                            // Show language mismatch indicator if detected language differs
+                            if note.hasLanguageMismatch {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.orange)
+                                
+                                Text("(\(note.detectedSupportedLanguage?.displayName ?? "Unknown") detected)")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.orange.opacity(0.8))
+                            }
+                        }
+                    }
+                    
                     if let locationName = note.locationName, !locationName.isEmpty {
                         Button(action: {
                             showingMap = true

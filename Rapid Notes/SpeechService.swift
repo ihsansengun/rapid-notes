@@ -11,10 +11,36 @@ class SpeechService: ObservableObject {
     @Published var isRecording = false
     @Published var transcribedText = ""
     @Published var authorizationStatus: SFSpeechRecognizerAuthorizationStatus = .notDetermined
+    @Published var currentLanguage: SupportedLanguage = LanguageService.shared.currentLanguage
+    @Published var detectedLanguage: SupportedLanguage?
+    @Published var languageConfidence: Double = 0.0
+    
+    private let languageService = LanguageService.shared
+    private let languageDetector = LanguageDetector.shared
     
     init() {
-        speechRecognizer = SFSpeechRecognizer(locale: Locale.current)
+        setupSpeechRecognizer()
         requestSpeechAuthorization()
+        
+        // Listen for language changes
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(languageDidChange),
+            name: NSNotification.Name("LanguageChanged"),
+            object: nil
+        )
+    }
+    
+    private func setupSpeechRecognizer() {
+        speechRecognizer = languageService.speechRecognizer(for: currentLanguage)
+    }
+    
+    @objc private func languageDidChange() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            self.currentLanguage = self.languageService.currentLanguage
+            self.setupSpeechRecognizer()
+        }
     }
     
     private func requestSpeechAuthorization() {
@@ -56,6 +82,11 @@ class SpeechService: ObservableObject {
                 DispatchQueue.main.async {
                     if let result = result {
                         self?.transcribedText = result.bestTranscription.formattedString
+                        
+                        // Perform language detection on partial results
+                        if result.isFinal {
+                            self?.performLanguageDetection(on: result.bestTranscription.formattedString)
+                        }
                     }
                     
                     if error != nil || result?.isFinal == true {
@@ -91,5 +122,92 @@ class SpeechService: ObservableObject {
         recognitionTask = nil
         
         isRecording = false
+    }
+    
+    /// Change the speech recognition language
+    func changeLanguage(to language: SupportedLanguage) {
+        currentLanguage = language
+        languageService.setLanguage(language)
+        setupSpeechRecognizer()
+        
+        NotificationCenter.default.post(name: NSNotification.Name("LanguageChanged"), object: nil)
+    }
+    
+    /// Perform language detection on transcribed text
+    private func performLanguageDetection(on text: String) {
+        guard !text.isEmpty else { return }
+        
+        let (detected, confidence) = languageDetector.detectLanguageWithConfidence(from: text)
+        
+        if let detectedLang = detected {
+            detectedLanguage = detectedLang
+            languageConfidence = confidence
+            
+            // Auto-switch language if enabled and confidence is high
+            if languageService.autoDetectLanguage &&
+               confidence > 0.8 &&
+               detectedLang != currentLanguage {
+                
+                print("🔄 Auto-switching language to \(detectedLang.displayName) (confidence: \(String(format: "%.2f", confidence)))")
+                changeLanguage(to: detectedLang)
+            }
+        }
+    }
+    
+    /// Get available languages for speech recognition
+    var availableLanguages: [SupportedLanguage] {
+        return languageService.availableLanguages
+    }
+    
+    /// Check if current language supports speech recognition
+    var isCurrentLanguageSupported: Bool {
+        return currentLanguage.isSpeechRecognitionSupported
+    }
+    
+    /// Get language suggestions based on transcribed text
+    func getLanguageSuggestions(for text: String) -> [(language: SupportedLanguage, confidence: Double)] {
+        return languageDetector.getLanguageHypotheses(from: text, maxCount: 3)
+    }
+    
+    /// Check if language switch is recommended
+    func shouldSuggestLanguageSwitch(for text: String) -> Bool {
+        return languageDetector.shouldSuggestLanguageChange(for: text, currentLanguage: currentLanguage)
+    }
+    
+    /// Transcribe with specific language (one-time use)
+    func transcribeWithLanguage(_ language: SupportedLanguage, completion: @escaping (String?) -> Void) {
+        guard languageService.speechRecognizer(for: language) != nil else {
+            completion(nil)
+            return
+        }
+        
+        // This would be used for re-transcribing existing audio with different language
+        // Implementation would depend on having stored audio data
+        print("Transcribing with language: \(language.displayName)")
+        completion(transcribedText) // Placeholder
+    }
+    
+    /// Debug speech recognition status
+    func debugSpeechRecognition() {
+        print("=== Speech Recognition Debug ===")
+        print("Current Language: \(currentLanguage.displayName)")
+        print("Speech Recognizer Available: \(speechRecognizer != nil)")
+        print("Authorization Status: \(authorizationStatus)")
+        print("Is Recording: \(isRecording)")
+        print("Transcribed Text Length: \(transcribedText.count)")
+        
+        if let detected = detectedLanguage {
+            print("Detected Language: \(detected.displayName) (confidence: \(String(format: "%.2f", languageConfidence)))")
+        }
+        
+        print("Available Languages:")
+        for lang in availableLanguages {
+            print("  - \(lang.flag) \(lang.displayName)")
+        }
+        print("================================")
+    }
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 }

@@ -867,6 +867,9 @@ struct SettingsScreen: View {
             
             Spacer()
             
+            // Language Debug Section
+            LanguageDebugSection()
+            
             // About section
             VStack(spacing: 8) {
                 Text("QuickDump")
@@ -1225,6 +1228,82 @@ struct InstructionStep: View {
                     .foregroundColor(.white.opacity(0.8))
             }
         }
+    }
+}
+
+// MARK: - Language Debug Section
+struct LanguageDebugSection: View {
+    @StateObject private var languageService = LanguageService.shared
+    @State private var showingDetails = false
+    
+    var body: some View {
+        VStack(spacing: 16) {
+            // Header
+            HStack {
+                Image(systemName: "globe")
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundColor(.blue)
+                
+                Text("Language Debug")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(.white)
+                
+                Spacer()
+                
+                Button(action: {
+                    showingDetails.toggle()
+                }) {
+                    Image(systemName: showingDetails ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.white.opacity(0.6))
+                }
+            }
+            .onTapGesture {
+                showingDetails.toggle()
+            }
+            
+            if showingDetails {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Current: \(languageService.currentLanguage.flag) \(languageService.currentLanguage.displayName)")
+                        .font(.system(size: 14))
+                        .foregroundColor(.white.opacity(0.8))
+                    
+                    Text("Auto-detect: \(languageService.autoDetectLanguage ? "ON" : "OFF")")
+                        .font(.system(size: 14))
+                        .foregroundColor(.white.opacity(0.8))
+                    
+                    Text("Available Languages:")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.white.opacity(0.9))
+                        .padding(.top, 8)
+                    
+                    ForEach(SupportedLanguage.allCases) { language in
+                        HStack {
+                            Text(language.flag)
+                            Text(language.displayName)
+                                .font(.system(size: 13))
+                            Spacer()
+                            Text(language.isSpeechRecognitionSupported ? "✓" : "✗")
+                                .foregroundColor(language.isSpeechRecognitionSupported ? .green : .red)
+                        }
+                        .foregroundColor(.white.opacity(0.7))
+                    }
+                    
+                    Button("Print Debug Info") {
+                        languageService.debugLanguageSupport()
+                    }
+                    .padding(.top, 8)
+                    .foregroundColor(.blue)
+                    .font(.system(size: 14, weight: .medium))
+                }
+                .padding(.top, 8)
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
+        .background(Color.white.opacity(0.05))
+        .cornerRadius(12)
+        .padding(.horizontal, 20)
     }
 }
 

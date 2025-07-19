@@ -14,6 +14,8 @@ struct NewNoteView: View {
     @State private var recordingDuration: TimeInterval = 0
     @State private var showingSaveAnimation = false
     @State private var launchedFromWidget = false
+    @State private var showingLanguageMismatch = false
+    @State private var detectedLanguageMismatch: (detected: SupportedLanguage, confidence: Double)?
     
     var body: some View {
         NavigationView {
@@ -68,23 +70,57 @@ struct NewNoteView: View {
         .overlay(
             saveAnimationOverlay
         )
+        .overlay(
+            languageMismatchOverlay
+        )
     }
     
     private var voiceRecordingView: some View {
         VStack(spacing: 20) {
+            // Language switcher at the top
+            QuickLanguageSwitcher()
+            
             recordingIndicator
             
-            Text(speechService.transcribedText.isEmpty ? "Speak your note..." : speechService.transcribedText)
-                .font(.body)
-                .foregroundColor(speechService.transcribedText.isEmpty ? .secondary : .primary)
-                .multilineTextAlignment(.center)
-                .padding()
-                .background(Color.gray.opacity(0.1))
-                .cornerRadius(10)
+            VStack(spacing: 12) {
+                Text(speechService.transcribedText.isEmpty ? "Speak your note..." : speechService.transcribedText)
+                    .font(.body)
+                    .foregroundColor(speechService.transcribedText.isEmpty ? .secondary : .primary)
+                    .multilineTextAlignment(.center)
+                    .padding()
+                    .background(Color.gray.opacity(0.1))
+                    .cornerRadius(10)
+                
+                // Language detection indicator
+                if let detectedLang = speechService.detectedLanguage,
+                   speechService.languageConfidence > 0.5 {
+                    HStack {
+                        Image(systemName: "waveform.path.ecg")
+                            .font(.caption)
+                            .foregroundColor(.blue)
+                        
+                        Text("Detected: \(detectedLang.flag) \(detectedLang.displayName)")
+                            .font(.caption)
+                            .foregroundColor(.blue)
+                        
+                        Text("(\(Int(speechService.languageConfidence * 100))%)")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.blue.opacity(0.1))
+                    .cornerRadius(6)
+                }
+            }
             
             if speechService.isRecording {
                 recordingControls
             }
+        }
+        .onReceive(speechService.$transcribedText) { transcribedText in
+            // Check for language mismatch when transcription is updated
+            checkForLanguageMismatch(transcribedText)
         }
     }
     
@@ -166,6 +202,33 @@ struct NewNoteView: View {
         }
     }
     
+    @ViewBuilder
+    private var languageMismatchOverlay: some View {
+        if showingLanguageMismatch,
+           let mismatch = detectedLanguageMismatch {
+            VStack {
+                Spacer()
+                
+                LanguageMismatchView(
+                    detectedLanguage: mismatch.detected,
+                    currentLanguage: speechService.currentLanguage,
+                    confidence: mismatch.confidence,
+                    onSwitch: {
+                        speechService.changeLanguage(to: mismatch.detected)
+                        showingLanguageMismatch = false
+                        detectedLanguageMismatch = nil
+                    },
+                    onDismiss: {
+                        showingLanguageMismatch = false
+                        detectedLanguageMismatch = nil
+                    }
+                )
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+            .ignoresSafeArea(.keyboard)
+        }
+    }
+    
     private func startVoiceRecording() {
         locationService.requestLocation()
         speechService.startRecording()
@@ -182,9 +245,48 @@ struct NewNoteView: View {
         recordingDuration = 0
     }
     
+    private func checkForLanguageMismatch(_ text: String) {
+        guard !text.isEmpty && !isTyping else { return }
+        
+        if speechService.shouldSuggestLanguageSwitch(for: text) {
+            let suggestions = speechService.getLanguageSuggestions(for: text)
+            if let firstSuggestion = suggestions.first,
+               firstSuggestion.confidence > Config.languageDetectionThreshold {
+                
+                detectedLanguageMismatch = (detected: firstSuggestion.language, confidence: firstSuggestion.confidence)
+                
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                    showingLanguageMismatch = true
+                }
+                
+                // Auto-dismiss after 10 seconds
+                DispatchQueue.main.asyncAfter(deadline: .now() + 10) {
+                    if showingLanguageMismatch {
+                        withAnimation {
+                            showingLanguageMismatch = false
+                            detectedLanguageMismatch = nil
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
     private func saveNote() async {
         let finalText = isTyping ? noteText : speechService.transcribedText
         guard !finalText.isEmpty else { return }
+        
+        // Get language information
+        let noteLanguage = speechService.currentLanguage
+        let (detectedLang, confidence) = await withCheckedContinuation { continuation in
+            DispatchQueue.main.async {
+                if let detected = speechService.detectedLanguage {
+                    continuation.resume(returning: (detected, speechService.languageConfidence))
+                } else {
+                    continuation.resume(returning: (noteLanguage, 1.0))
+                }
+            }
+        }
         
         let note = Note(context: viewContext)
         note.id = UUID()
@@ -195,7 +297,12 @@ struct NewNoteView: View {
         note.longitude = locationService.currentLocation?.coordinate.longitude ?? 0
         note.locationName = locationService.getLocationName()
         
-        let aiResult = await aiService.analyzeNote(finalText)
+        // Set language information
+        note.setLanguage(noteLanguage)
+        note.setDetectedLanguage(detectedLang, confidence: confidence)
+        
+        // Use language-aware AI analysis
+        let aiResult = await aiService.analyzeNote(finalText, language: noteLanguage)
         note.aiTags = aiResult.tags.joined(separator: ",")
         note.aiSummary = aiResult.summary
         

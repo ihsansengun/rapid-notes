@@ -10,5 +10,8 @@
         <attribute name="isVoiceNote" optional="YES" attributeType="Boolean" usesScalarValueType="YES"/>
         <attribute name="aiTags" optional="YES" attributeType="String"/>
         <attribute name="aiSummary" optional="YES" attributeType="String"/>
+        <attribute name="language" optional="YES" attributeType="String" defaultValueString="en-US"/>
+        <attribute name="detectedLanguage" optional="YES" attributeType="String"/>
+        <attribute name="languageConfidence" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
     </entity>
 </model>
