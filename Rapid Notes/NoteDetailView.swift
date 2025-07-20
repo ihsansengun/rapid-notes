@@ -4,6 +4,7 @@ import MapKit
 
 struct NoteDetailView: View {
     @ObservedObject var note: Note
+    let startInEditMode: Bool
     @Environment(\.managedObjectContext) private var viewContext
     @Environment(\.dismiss) private var dismiss
     @StateObject private var aiService = AIService()
@@ -12,6 +13,13 @@ struct NoteDetailView: View {
     @State private var expandedContent = ""
     @State private var showingExpandedContent = false
     @State private var showingMap = false
+    @State private var isEditing = false
+    @State private var editedContent = ""
+    
+    init(note: Note, startInEditMode: Bool = false) {
+        self.note = note
+        self.startInEditMode = startInEditMode
+    }
     
     var body: some View {
         ScrollView {
@@ -22,12 +30,22 @@ struct NoteDetailView: View {
                         .font(.system(size: 18, weight: .semibold))
                         .foregroundColor(.white)
                     
-                    Text(note.content ?? "")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(.white)
-                        .padding(16)
-                        .background(Color.white.opacity(0.05))
-                        .cornerRadius(12)
+                    if isEditing {
+                        TextField("Note content", text: $editedContent, axis: .vertical)
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.white)
+                            .padding(16)
+                            .background(Color.white.opacity(0.1))
+                            .cornerRadius(12)
+                            .textFieldStyle(PlainTextFieldStyle())
+                    } else {
+                        Text(note.content ?? "")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.white)
+                            .padding(16)
+                            .background(Color.white.opacity(0.05))
+                            .cornerRadius(12)
+                    }
                 }
                 
                 // Note metadata
@@ -137,43 +155,8 @@ struct NoteDetailView: View {
                     }
                 }
                 
-                // AI Expand button
-                if Config.hasValidOpenAIKey {
-                    Button(action: {
-                        Task {
-                            await expandNote()
-                        }
-                    }) {
-                        HStack(spacing: 8) {
-                            Image(systemName: "wand.and.stars")
-                                .font(.system(size: 16, weight: .medium))
-                            Text(isExpanding ? "Expanding..." : "Expand with AI")
-                                .font(.system(size: 16, weight: .medium))
-                        }
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 50)
-                        .background(Color.purple.opacity(0.3))
-                        .cornerRadius(12)
-                    }
-                    .disabled(isExpanding)
-                    
-                    // Expanded content
-                    if showingExpandedContent && !expandedContent.isEmpty {
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("AI-Expanded Note")
-                                .font(.system(size: 18, weight: .semibold))
-                                .foregroundColor(.white)
-                            
-                            Text(expandedContent)
-                                .font(.system(size: 16, weight: .medium))
-                                .foregroundColor(.white)
-                                .padding(16)
-                                .background(Color.purple.opacity(0.1))
-                                .cornerRadius(12)
-                        }
-                    }
-                }
+                // Memory connections (discovered in background)
+                MemoryConnectionsView(note: note)
             }
             .padding(20)
         }
@@ -185,18 +168,41 @@ struct NoteDetailView: View {
         .preferredColorScheme(.dark)
         .toolbar {
             #if os(iOS)
-            ToolbarItem(placement: .primaryAction) {
-                Button("Done") {
-                    dismiss()
+            ToolbarItem(placement: .navigationBarLeading) {
+                if isEditing {
+                    Button("Cancel") {
+                        cancelEditing()
+                    }
+                    .foregroundColor(.red)
                 }
-                .foregroundColor(.blue)
+            }
+            
+            ToolbarItem(placement: .primaryAction) {
+                if isEditing {
+                    Button("Save") {
+                        saveNote()
+                    }
+                    .foregroundColor(.blue)
+                } else {
+                    Button("Edit") {
+                        startEditing()
+                    }
+                    .foregroundColor(.blue)
+                }
             }
             #else
             ToolbarItem(placement: .confirmationAction) {
-                Button("Done") {
-                    dismiss()
+                if isEditing {
+                    Button("Save") {
+                        saveNote()
+                    }
+                    .foregroundColor(.blue)
+                } else {
+                    Button("Edit") {
+                        startEditing()
+                    }
+                    .foregroundColor(.blue)
                 }
-                .foregroundColor(.blue)
             }
             #endif
         }
@@ -204,6 +210,35 @@ struct NoteDetailView: View {
             if note.latitude != 0 && note.longitude != 0 {
                 MapView(latitude: note.latitude, longitude: note.longitude, locationName: note.locationName ?? "Unknown Location")
             }
+        }
+        .onAppear {
+            editedContent = note.content ?? ""
+            if startInEditMode {
+                isEditing = true
+            }
+        }
+    }
+    
+    // MARK: - Edit Functions
+    
+    private func startEditing() {
+        editedContent = note.content ?? ""
+        isEditing = true
+    }
+    
+    private func cancelEditing() {
+        editedContent = note.content ?? ""
+        isEditing = false
+    }
+    
+    private func saveNote() {
+        note.content = editedContent
+        
+        do {
+            try viewContext.save()
+            isEditing = false
+        } catch {
+            print("Error saving note: \(error)")
         }
     }
     

@@ -26,6 +26,8 @@ struct ContentView: View {
         case newNote
         case textNote
         case notesList
+        case memoryDashboard
+        case memorySessions
         case settings
     }
     
@@ -55,8 +57,30 @@ struct ContentView: View {
                         NotesListScreen(
                             notes: Array(notes),
                             onNewNote: { currentScreen = .newNote },
-                            onSettings: { showingSettings = true }
+                            onSettings: { showingSettings = true },
+                            onMemoryDashboard: { currentScreen = .memoryDashboard },
+                            onMemorySessions: { currentScreen = .memorySessions }
                         )
+                    case .memoryDashboard:
+                        MemoryDashboard()
+                            .navigationBarHidden(false)
+                            .toolbar {
+                                ToolbarItem(placement: .navigationBarLeading) {
+                                    Button("Back") {
+                                        currentScreen = .notesList
+                                    }
+                                }
+                            }
+                    case .memorySessions:
+                        MemorySessionsView()
+                            .navigationBarHidden(false)
+                            .toolbar {
+                                ToolbarItem(placement: .navigationBarLeading) {
+                                    Button("Back") {
+                                        currentScreen = .notesList
+                                    }
+                                }
+                            }
                     case .settings:
                         SettingsView()
                             .navigationBarHidden(false)
@@ -333,6 +357,9 @@ struct NewNoteScreen: View {
             note.setDetectedLanguage(detected, confidence: confidence)
         }
         
+        // Mark note for AI processing
+        note.needsAIProcessing = true
+        
         do {
             try viewContext.save()
             
@@ -459,6 +486,9 @@ struct TextNoteScreen: View {
         let noteLanguage = LanguageService.shared.currentLanguage
         note.setLanguage(noteLanguage)
         
+        // Mark note for AI processing
+        note.needsAIProcessing = true
+        
         print("💾 Saving text note with language: \(noteLanguage.displayName) (\(noteLanguage.rawValue))")
         
         do {
@@ -491,6 +521,8 @@ struct NotesListScreen: View {
     let notes: [Note]
     let onNewNote: () -> Void
     let onSettings: () -> Void
+    let onMemoryDashboard: () -> Void
+    let onMemorySessions: () -> Void
     
     var body: some View {
         VStack(spacing: 0) {
@@ -502,16 +534,35 @@ struct NotesListScreen: View {
                 
                 Spacer()
                 
-                Button(action: onSettings) {
-                    Image(systemName: "gearshape")
-                        .font(.system(size: 18, weight: .medium))
-                        .foregroundColor(.white.opacity(0.8))
-                        .frame(width: 44, height: 44)
-                        .background(Color.white.opacity(0.1))
-                        .clipShape(Circle())
+                // Memory buttons
+                HStack(spacing: 12) {
+                    Button(action: onMemorySessions) {
+                        Image(systemName: "brain.head.profile")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.white.opacity(0.8))
+                            .frame(width: 40, height: 40)
+                            .background(Color.blue.opacity(0.2))
+                            .clipShape(Circle())
+                    }
+                    
+                    Button(action: onMemoryDashboard) {
+                        Image(systemName: "chart.line.uptrend.xyaxis")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.white.opacity(0.8))
+                            .frame(width: 40, height: 40)
+                            .background(Color.purple.opacity(0.2))
+                            .clipShape(Circle())
+                    }
+                    
+                    Button(action: onSettings) {
+                        Image(systemName: "gearshape")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.white.opacity(0.8))
+                            .frame(width: 40, height: 40)
+                            .background(Color.white.opacity(0.1))
+                            .clipShape(Circle())
+                    }
                 }
-                .scaleEffect(1.0)
-                .animation(.spring(response: 0.3, dampingFraction: 0.8), value: UUID())
             }
             .padding(.horizontal, 20)
             .padding(.top, 20)
@@ -613,81 +664,178 @@ struct MicrophoneIcon: View {
 struct NoteCard: View {
     let note: Note
     @Environment(\.managedObjectContext) private var viewContext
+    @State private var showingAIEnhancements = false
     
     var body: some View {
-        NavigationLink(destination: NoteDetailView(note: note)) {
-            HStack(alignment: .top, spacing: 12) {
-                // Content
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(note.content ?? "")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(.white)
-                        .lineLimit(3)
-                        .multilineTextAlignment(.leading)
-                    
-                    // Meta info
-                    HStack(spacing: 8) {
-                        if note.isVoiceNote {
-                            Image(systemName: "mic.fill")
+        VStack(spacing: 0) {
+            // Main card content
+            NavigationLink(destination: NoteDetailView(note: note, startInEditMode: false)) {
+                HStack(alignment: .top, spacing: 12) {
+                    // Content
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(note.content ?? "")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.white)
+                            .lineLimit(3)
+                            .multilineTextAlignment(.leading)
+                        
+                        // Meta info
+                        HStack(spacing: 8) {
+                            if note.isVoiceNote {
+                                Image(systemName: "mic.fill")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.blue)
+                            }
+                            
+                            // Language flag
+                            Text(note.languageFlag)
                                 .font(.system(size: 12))
-                                .foregroundColor(.blue)
-                        }
-                        
-                        Text(note.createdAt?.formatted(date: .abbreviated, time: .shortened) ?? "")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(.white.opacity(0.6))
-                        
-                        if let location = note.locationName, !location.isEmpty {
-                            Text("• \(location)")
+                            
+                            Text(note.createdAt?.formatted(date: .abbreviated, time: .shortened) ?? "")
                                 .font(.system(size: 12, weight: .medium))
                                 .foregroundColor(.white.opacity(0.6))
-                                .lineLimit(1)
+                            
+                            if let location = note.locationName, !location.isEmpty {
+                                Text("• \(location)")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(.white.opacity(0.6))
+                                    .lineLimit(1)
+                            }
+                            
+                            Spacer()
                         }
                         
-                        Spacer()
-                    }
-                    
-                    // AI Tags
-                    if let tags = note.aiTags, !tags.isEmpty {
-                        HStack {
-                            ForEach(tags.components(separatedBy: ",").prefix(3), id: \.self) { tag in
-                                Text(tag.trimmingCharacters(in: .whitespaces))
+                        // AI Category (enhanced display)
+                        if let category = note.localizedAICategory {
+                            HStack {
+                                Text(LocalizedCategory.getDisplayWithIcon(for: category, language: note.supportedLanguage ?? .english))
                                     .font(.system(size: 11, weight: .medium))
                                     .foregroundColor(.blue)
                                     .padding(.horizontal, 8)
                                     .padding(.vertical, 4)
                                     .background(Color.blue.opacity(0.2))
                                     .cornerRadius(12)
+                                
+                                // AI confidence indicator
+                                if note.hasHighConfidenceAI {
+                                    Circle()
+                                        .fill(Color.green)
+                                        .frame(width: 6, height: 6)
+                                } else if note.hasAIProcessing {
+                                    Circle()
+                                        .fill(Color.orange)
+                                        .frame(width: 6, height: 6)
+                                }
+                                
+                                Spacer()
                             }
-                            Spacer()
+                        }
+                        
+                        // Legacy AI Tags (fallback)
+                        if note.localizedAICategory == nil, let tags = note.aiTags, !tags.isEmpty {
+                            HStack {
+                                ForEach(tags.components(separatedBy: ",").prefix(3), id: \.self) { tag in
+                                    Text(tag.trimmingCharacters(in: .whitespaces))
+                                        .font(.system(size: 11, weight: .medium))
+                                        .foregroundColor(.blue)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(Color.blue.opacity(0.2))
+                                        .cornerRadius(12)
+                                }
+                                Spacer()
+                            }
+                        }
+                    }
+                    
+                    Spacer()
+                    
+                    // Actions
+                    VStack(spacing: 12) {
+                        // AI Enhancement toggle
+                        Button(action: {
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                showingAIEnhancements.toggle()
+                            }
+                        }) {
+                            Image(systemName: note.hasAIProcessing ? "brain.head.profile.fill" : "brain.head.profile")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(note.hasAIProcessing ? .blue : .white.opacity(0.6))
+                        }
+                        
+                        NavigationLink(destination: NoteDetailView(note: note, startInEditMode: true)) {
+                            Image(systemName: "pencil")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(.white.opacity(0.6))
+                        }
+                        
+                        Button(action: deleteNote) {
+                            Image(systemName: "trash")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(.red.opacity(0.8))
                         }
                     }
                 }
-                
-                Spacer()
-                
-                // Actions
-                VStack(spacing: 12) {
-                    Button(action: {}) {
-                        Image(systemName: "star")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(.white.opacity(0.6))
-                    }
-                    
-                    Button(action: deleteNote) {
-                        Image(systemName: "trash")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(.red.opacity(0.8))
+                .padding(16)
+                .background(Color.white.opacity(0.05))
+                .cornerRadius(16)
+            }
+            .buttonStyle(PlainButtonStyle())
+            
+            // AI Enhancement View
+            if showingAIEnhancements {
+                NoteEnhancementView(note: note)
+                    .padding(.top, 8)
+                    .transition(.asymmetric(
+                        insertion: .move(edge: .top).combined(with: .opacity),
+                        removal: .move(edge: .top).combined(with: .opacity)
+                    ))
+            }
+        }
+        .scaleEffect(1.0)
+        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: UUID())
+        .onAppear {
+            // Auto-process notes that need AI processing
+            if note.needsAIProcessing && note.content != nil && !note.content!.isEmpty {
+                Task {
+                    await processNoteForAI()
+                }
+            }
+        }
+    }
+    
+    private func processNoteForAI() async {
+        guard let content = note.content, !content.isEmpty else { return }
+        
+        let aiMemoryService = AIMemoryService()
+        let categoryService = CategoryService.shared
+        
+        // Process with AI Memory Service
+        let clarity = await aiMemoryService.clarifyNote(content, language: note.supportedLanguage)
+        
+        await MainActor.run {
+            if let clarity = clarity {
+                note.updateWithClarity(clarity)
+            }
+            
+            // Also run categorization service
+            Task {
+                let categoryResult = await categoryService.categorizeNote(content, language: note.supportedLanguage)
+                await MainActor.run {
+                    if note.aiCategory == nil {  // Don't override if already set
+                        note.aiCategory = categoryResult.category
+                        note.aiConfidence = max(note.aiConfidence, categoryResult.confidence)
                     }
                 }
             }
-            .padding(16)
-            .background(Color.white.opacity(0.05))
-            .cornerRadius(16)
+            
+            // Save changes
+            do {
+                try viewContext.save()
+            } catch {
+                print("Error saving AI processing results: \(error)")
+            }
         }
-        .buttonStyle(PlainButtonStyle())
-        .scaleEffect(1.0)
-        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: UUID())
     }
     
     private func deleteNote() {
